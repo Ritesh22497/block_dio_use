@@ -165,6 +165,13 @@ class UserLoginScreen extends ConsumerWidget {
                   ),
                   SizedBox(height: 15),
                   // for google auth
+                CustomButton(
+                  icon: Icon(Icons.add_ic_call_outlined),
+                  text: "Login with phone",
+                  onTap:() {},),
+                  SizedBox(height: 15),
+                 
+                  // for google auth
                 //  GoogleLoginScreen(),
                   SizedBox(height: 15),
                   Row(
