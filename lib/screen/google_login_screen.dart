@@ -49,6 +49,7 @@
 
 import 'package:block_dio_use/core/my_button.dart';
 import 'package:block_dio_use/go_router.dart';
+import 'package:block_dio_use/screen/MainHomeScreen.dart';
 import 'package:block_dio_use/screen/signupScreen.dart';
 import 'package:block_dio_use/service/auth_providder.dart';
 import 'package:block_dio_use/service/auth_service.dart';
@@ -79,8 +80,8 @@ class UserLoginScreen extends ConsumerWidget {
         
 
 
-        
-       // NavigationHelper.pushReplacement(context, MainHomeScreen());
+
+        NavigationHelper.pushReplacement(context, MainHomeScreen());
         // mySnackBar(message: "Successful Login.", context: context);
         // showAppSnackbar(
         //   context: context,
