@@ -1,19 +1,29 @@
 // import 'package:block_dio_use/core/my_button.dart';
 // import 'package:block_dio_use/go_router.dart';
-// import 'package:block_dio_use/screen/signupScreen.dart';
+// import 'package:block_dio_use/screen/google_login_screen.dart';
 // import 'package:flutter/material.dart';
 
-// class LoginScreen extends StatelessWidget {
-//   const LoginScreen({super.key});
+// class SignupScreen extends StatelessWidget {
+//   const SignupScreen({super.key});
 
 //   @override
 //   Widget build(BuildContext context) {
 //     return Scaffold(
 //       appBar: AppBar(
-//         title: Text("Login Screen"),
+//         title: Text("SignUp Screen"),
 //       ),
 
 //       body: Column(children: [
+//         TextField(
+//           autocorrect: true,
+//           keyboardType: TextInputType.text,
+//           decoration: InputDecoration(
+
+//             prefix: Icon(Icons.email),
+//             label: Text("Enter your name"),
+//             contentPadding: EdgeInsets.all(15)
+//           ),
+//         ),
 //         TextField(
 //           autocorrect: true,
 //           keyboardType: TextInputType.emailAddress,
@@ -34,13 +44,13 @@
 //             contentPadding: EdgeInsets.all(15)
 //           ),
 //         ),
-      
-//         CustomButton(onTap: (){},text: "Login",),
-//         Row(children: [Spacer(),Text("Don't have an account? "),GestureDetector(
+              
+//         CustomButton(onTap: (){},text: "SignUP",),
+//         Row(children: [Spacer(),Text("Already have an account? "),GestureDetector(
 //           onTap: (){
-//             NavigationHelper.push(context, SignupScreen());
+//             NavigationHelper.push(context, LoginScreen());
 //           },
-//           child: Text("SingnUp",style: TextStyle(fontWeight: FontWeight.bold),))],)
+//           child: Text("Login",style: TextStyle(fontWeight: FontWeight.bold),))],)
        
 //       ],),
 //     );
@@ -49,66 +59,74 @@
 
 import 'package:block_dio_use/core/my_button.dart';
 import 'package:block_dio_use/go_router.dart';
-import 'package:block_dio_use/screen/signupScreen.dart';
+import 'package:block_dio_use/screen/google_login_screen.dart';
 import 'package:block_dio_use/service/auth_providder.dart';
 import 'package:block_dio_use/service/auth_service.dart';
 import 'package:flutter/material.dart';
 
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-class UserLoginScreen extends ConsumerWidget {
-  const UserLoginScreen({super.key});
+class SignupScreen extends ConsumerWidget {
+  const SignupScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    double height = MediaQuery.of(context).size.height;
     final formState = ref.watch(authFormProvider);
     final formNotifer = ref.read(authFormProvider.notifier);
     final authMethod = ref.read(authMethodProvider);
-    void login() async {
+    void sigup() async {
       formNotifer.setLoading(true);
-      final res = await authMethod.loginUser(
+      final res = await authMethod.signUpUser(
         email: formState.email,
         password: formState.password,
+        name: formState.name,
       );
       formNotifer.setLoading(false);
-      if (res == "success") {
-
-
-
-
-        
-
-
-        
-       // NavigationHelper.pushReplacement(context, MainHomeScreen());
-        // mySnackBar(message: "Successful Login.", context: context);
+      if (res == "success" && context.mounted) {
+        NavigationHelper.pushReplacement(context, UserLoginScreen());
         // showAppSnackbar(
         //   context: context,
         //   type: SnackbarType.success,
-        //   description: "Successful Login",
+        //   description: "Sinup Up Successful. Now turn to login",
         // );
       } else {
-        //    showAppSnackbar(
-        //   context: context,
-        //   type: SnackbarType.error,
-        //   description: res,
-        // );
+        if (context.mounted) {
+          // showAppSnackbar(
+          //   context: context,
+          //   type: SnackbarType.error,
+          //   description: res,
+          // );
+        }
       }
     }
+    double height = MediaQuery.of(context).size.height;
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Column(
+      body: SafeArea(
+        child: ListView(
           children: [
-            SizedBox(
-              height: height / 2.1,
+            Container(
+              height: height / 2.4,
               width: double.maxFinite,
-              child: Image.asset("assets/2752392.jpg", fit: BoxFit.cover),
+              decoration: BoxDecoration(),
+              child: Image.asset("assets/77881.jpg", fit: BoxFit.cover),
             ),
+            SizedBox(height: 20),
             Padding(
               padding: EdgeInsets.all(15),
               child: Column(
                 children: [
+                  TextField(
+                    autocorrect: false,
+                    onChanged: (value) => formNotifer.updateName(value),
+                    keyboardType: TextInputType.text,
+                    decoration: InputDecoration(
+                      prefixIcon: Icon(Icons.person),
+                      labelText: "Enter your name",
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.all(15),
+                      errorText: formState.nameError,
+                    ),
+                  ),
+                  SizedBox(height: 15),
                   TextField(
                     autocorrect: false,
                     onChanged: (value) => formNotifer.updateEmail(value),
@@ -147,35 +165,20 @@ class UserLoginScreen extends ConsumerWidget {
                   formState.isLoading
                       ? Center(child: CircularProgressIndicator())
                       : CustomButton(
-                          onTap: formState.isFormValid ? login : null,
-                          text: "Login",
+                          onTap: formState.isFormValid ? sigup : null,
+                          text: "Sign Up",
                         ),
                   SizedBox(height: 20),
                   Row(
                     children: [
-                      Expanded(
-                        child: Container(height: 1, color: Colors.black26),
-                      ),
-                      Text(" or "),
-                      Expanded(
-                        child: Container(height: 1, color: Colors.black26),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 15),
-                  // for google auth
-                //  GoogleLoginScreen(),
-                  SizedBox(height: 15),
-                  Row(
-                    children: [
                       Spacer(),
-                      Text("Don't have an account? "),
+                      Text("Already have an account?"),
                       GestureDetector(
                         onTap: () {
-                          NavigationHelper.push(context, SignupScreen());
+                          NavigationHelper.push(context, UserLoginScreen());
                         },
                         child: Text(
-                          "SignUp",
+                          "Login",
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
