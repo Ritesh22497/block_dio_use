@@ -36,6 +36,8 @@
 //   }
 // }
 
+import 'package:block_dio_use/Ai_chatboat/chat_screen.dart';
+import 'package:block_dio_use/Ai_chatboat/local_db_service.dart';
 import 'package:block_dio_use/student_ai_chatbot/providers/chat_provider.dart';
 import 'package:block_dio_use/student_ai_chatbot/screens/chat_screen.dart';
 import 'package:flutter/material.dart';
@@ -46,8 +48,13 @@ import 'package:provider/provider.dart';
 // import 'services/firebase_service.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+     WidgetsFlutterBinding.ensureInitialized();
+//      await Firebase.initializeApp(
+//   options: DefaultFirebaseOptions.currentPlatform,
+// );
+    await Firebase.initializeApp();
+  // WidgetsFlutterBinding.ensureInitialized();
+  // await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -59,6 +66,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider1()),
       ],
       child: MaterialApp(
         title: 'Student AI Helper',
@@ -72,7 +80,7 @@ class MyApp extends StatelessWidget {
             foregroundColor: Colors.white,
           ),
         ),
-        home: const ChatScreen(),
+        home: const ChatScreen2(),
       ),
     );
   }

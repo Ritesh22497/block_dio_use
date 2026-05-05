@@ -39,22 +39,22 @@ class _ChatScreenState extends State<ChatScreen> {
         title: const Text('Student AI Helper 🎓'),
         actions: [
           // Subject selector
-          Consumer<ChatProvider>(
-            builder: (context, provider, _) {
-              return PopupMenuButton<String>(
-                icon: const Icon(Icons.subject),
-                onSelected: (value) => provider.setSubject(value),
-                itemBuilder: (context) => provider.subjects
-                    .map((subject) => PopupMenuItem(
-                          value: subject,
-                          child: Text(subject),
-                        ))
-                    .toList(),
-                tooltip: 'Select Subject',
-              );
-            },
-          ),
-          // Clear chat
+          // Consumer<ChatProvider>(
+          //   builder: (context, provider, _) {
+          //     return PopupMenuButton<String>(
+          //       icon: const Icon(Icons.subject),
+          //       onSelected: (value) => provider.setSubject(value),
+          //       itemBuilder: (context) => provider.subjects
+          //           .map((subject) => PopupMenuItem(
+          //                 value: subject,
+          //                 child: Text(subject),
+          //               ))
+          //           .toList(),
+          //       tooltip: 'Select Subject',
+          //     );
+          //   },
+          // ),
+          // // Clear chat
           IconButton(
             icon: const Icon(Icons.delete_outline),
             onPressed: () async {
@@ -95,8 +95,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   children: [
                     const Icon(Icons.school, size: 16, color: Colors.blue),
                     const SizedBox(width: 8),
-                    Text(
-                      'Subject: ${provider.selectedSubject}',
+                    Text("",
+                    //  'Subject: ${provider.selectedSubject}',
                       style: const TextStyle(
                         color: Colors.blue,
                         fontWeight: FontWeight.bold,
