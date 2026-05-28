@@ -38,6 +38,7 @@
 
 import 'package:block_dio_use/Ai_chatboat/chat_screen.dart';
 import 'package:block_dio_use/Ai_chatboat/local_db_service.dart';
+import 'package:block_dio_use/LIBROLANE/screen/homeScreen.dart';
 import 'package:block_dio_use/student_ai_chatbot/providers/chat_provider.dart';
 import 'package:block_dio_use/student_ai_chatbot/screens/chat_screen.dart';
 import 'package:flutter/material.dart';
@@ -80,7 +81,8 @@ class MyApp extends StatelessWidget {
             foregroundColor: Colors.white,
           ),
         ),
-        home: const ChatScreen2(),
+       home: const ChatScreen2(),
+       // home: const HomeScreen(),
       ),
     );
   }

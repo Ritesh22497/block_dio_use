@@ -1,4 +1,5 @@
 import 'package:block_dio_use/Ai_chatboat/local_db_service.dart';
+import 'package:block_dio_use/Live%20mic%20input/text_note.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -43,6 +44,15 @@ class _ChatScreen2State extends State<ChatScreen2> {
       appBar: AppBar(
         title: Text("AI Study Assistant 🎓"),
         actions: [
+          IconButton(
+            icon: Icon(Icons.mic),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => SpeechUI()),
+              );
+            },
+          ),
           IconButton(
             icon: Icon(Icons.quiz),
             onPressed: () {

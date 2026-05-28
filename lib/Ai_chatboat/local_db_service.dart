@@ -62,7 +62,7 @@ class LocalDBService {
 
 
 class AIService {
-  static const apiKey ="AIzaSyA2cZClAiatjAXfImGrs1CxwSiWmQ0IvAs";
+  static const apiKey ="AIzaSyDqhDTwYelOD4-4uBStbcd8A28U7YvpHhs";
 
   Future<String> sendMessage(String msg) async {
     try {
