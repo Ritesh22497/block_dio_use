@@ -1,64 +1,38 @@
 // lib/data/repositories/video_repository_impl.dart
 
-import 'package:dartz/dartz.dart';
-import '../../core/errors/failures.dart';
 import '../../domain/entities/video_entity.dart';
 import '../../domain/repositories/video_repository.dart';
-import '../datasources/video_cache_service.dart';
-import '../datasources/video_remote_datasource.dart';
+import '../datasources/local_database.dart';
+import '../models/video_model.dart';
 
 class VideoRepositoryImpl implements VideoRepository {
-  final VideoRemoteDataSource _remoteDataSource;
-
-  VideoRepositoryImpl(this._remoteDataSource);
+  final LocalDatabase _db;
+  VideoRepositoryImpl(this._db);
 
   @override
-  Future<Either<Failure, List<VideoEntity>>> fetchVideos({
-    int limit = 10,
-    String? lastDocumentId,
-  }) async {
-    try {
-      final videos = await _remoteDataSource.fetchVideos(
-        limit: limit,
-        lastDocumentId: lastDocumentId,
-      );
-      return Right(videos);
-    } 
-    // on FirebaseException catch (e) {
-    //   return Left(FirestoreFailure(e.message ?? 'Firestore error'));
-    // }
-     catch (e) {
-      return Left(UnknownFailure(e.toString()));
-    }
+  Future<List<VideoEntity>> getAllVideos() async {
+    final models = await _db.getAll();
+    return models;
   }
 
   @override
-  Future<Either<Failure, VideoEntity>> toggleLike({
-    required String videoId,
-    required bool isLiked,
-  }) async {
-    try {
-      final updated = await _remoteDataSource.toggleLike(
-        videoId: videoId,
-        isLiked: isLiked,
-      );
-      return Right(updated);
-    } 
-    // on FirebaseException catch (e) {
-    //   return Left(FirestoreFailure(e.message ?? 'Like toggle failed'));
-    // }
-     catch (e) {
-      return Left(UnknownFailure(e.toString()));
-    }
+  Future<VideoEntity> insertVideo(VideoEntity video) async {
+    final model = VideoModel.fromEntity(video);
+    return await _db.insert(model);
   }
 
   @override
-  Future<Either<Failure, String>> getCachedVideoPath(String videoUrl) async {
-    try {
-      final path = await VideoCacheManager.getCachedPath(videoUrl);
-      return Right(path);
-    } catch (e) {
-      return Left(CacheFailure(e.toString()));
-    }
+  Future<VideoEntity> updateVideo(VideoEntity video) async {
+    final model = VideoModel.fromEntity(video);
+    return await _db.update(model);
+  }
+
+  @override
+  Future<void> deleteVideo(String id) => _db.delete(id);
+
+  @override
+  Future<bool> isDatabaseEmpty() async {
+    final count = await _db.count();
+    return count == 0;
   }
 }

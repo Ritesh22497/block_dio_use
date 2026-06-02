@@ -1,32 +1,43 @@
 // lib/main.dart
 
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'core/di/injection_container.dart';
 import 'presentation/viewmodels/feed_viewmodel.dart';
 import 'presentation/views/feed_screen.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  // Force portrait
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   await initDependencies();
-  runApp(const ReelsApp());
+
+  runApp(const ReelBoxApp());
 }
 
-class ReelsApp extends StatelessWidget {
-  const ReelsApp({super.key});
+class ReelBoxApp extends StatelessWidget {
+  const ReelBoxApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Reels',
+      title: 'ReelBox',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
+      themeMode: ThemeMode.dark,
+      darkTheme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: Colors.black,
         colorScheme: const ColorScheme.dark(
-          primary: Colors.white,
-          secondary: Colors.redAccent,
+          primary: Color(0xFF6C63FF),
+          secondary: Color(0xFFFF6584),
+        ),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {TargetPlatform.android: FadeUpwardsPageTransitionsBuilder()},
         ),
       ),
       home: ChangeNotifierProvider<FeedViewModel>(

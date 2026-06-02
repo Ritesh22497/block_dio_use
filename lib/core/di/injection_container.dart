@@ -1,8 +1,8 @@
 // lib/core/di/injection_container.dart
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get_it/get_it.dart';
-import '../../data/datasources/video_remote_datasource.dart';
+import '../../data/datasources/demo_seeder.dart';
+import '../../data/datasources/local_database.dart';
 import '../../data/repositories/video_repository_impl.dart';
 import '../../domain/repositories/video_repository.dart';
 import '../../domain/usecases/video_usecases.dart';
@@ -11,32 +11,32 @@ import '../../presentation/viewmodels/feed_viewmodel.dart';
 final sl = GetIt.instance;
 
 Future<void> initDependencies() async {
-  // ─── External ─────────────────────────────────────────────
-  sl.registerLazySingleton<FirebaseFirestore>(
-    () => FirebaseFirestore.instance,
-  );
+  // Database
+  sl.registerLazySingleton<LocalDatabase>(() => LocalDatabase());
 
-  // ─── Data Sources ─────────────────────────────────────────
-  sl.registerLazySingleton<VideoRemoteDataSource>(
-    () => VideoRemoteDataSourceImpl(sl()),
-  );
-
-  // ─── Repositories ─────────────────────────────────────────
+  // Repository
   sl.registerLazySingleton<VideoRepository>(
     () => VideoRepositoryImpl(sl()),
   );
 
-  // ─── Use Cases ────────────────────────────────────────────
-  sl.registerLazySingleton(() => FetchVideosUseCase(sl()));
-  sl.registerLazySingleton(() => ToggleLikeUseCase(sl()));
-  sl.registerLazySingleton(() => GetCachedVideoUseCase(sl()));
+  // Seeder
+  sl.registerLazySingleton(() => DemoSeeder(sl()));
 
-  // ─── ViewModels ───────────────────────────────────────────
+  // Use Cases
+  sl.registerLazySingleton(() => GetAllVideosUseCase(sl()));
+  sl.registerLazySingleton(() => InsertVideoUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateVideoUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteVideoUseCase(sl()));
+  sl.registerLazySingleton(() => IsDatabaseEmptyUseCase(sl()));
+
+  // ViewModels
   sl.registerFactory(
     () => FeedViewModel(
-      fetchVideosUseCase: sl(),
-      toggleLikeUseCase: sl(),
-      getCachedVideoUseCase: sl(),
+      getAllVideos: sl(),
+      insertVideo: sl(),
+      updateVideo: sl(),
+      deleteVideo: sl(),
+      seeder: sl(),
     ),
   );
 }

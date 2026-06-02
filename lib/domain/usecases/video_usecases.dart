@@ -1,45 +1,34 @@
-// lib/domain/usecases/fetch_videos_usecase.dart
+// lib/domain/usecases/video_usecases.dart
 
 import '../entities/video_entity.dart';
 import '../repositories/video_repository.dart';
 
-class FetchVideosUseCase {
-  final VideoRepository _repository;
-
-  FetchVideosUseCase(this._repository);
-
-  Future<Either<Failure, List<VideoEntity>>> call({
-    int limit = AppConstants.pageSize,
-    String? lastDocumentId,
-  }) {
-    return _repository.fetchVideos(
-      limit: limit,
-      lastDocumentId: lastDocumentId,
-    );
-  }
+class GetAllVideosUseCase {
+  final VideoRepository _repo;
+  GetAllVideosUseCase(this._repo);
+  Future<List<VideoEntity>> call() => _repo.getAllVideos();
 }
 
-// lib/domain/usecases/toggle_like_usecase.dart
-class ToggleLikeUseCase {
-  final VideoRepository _repository;
-
-  ToggleLikeUseCase(this._repository);
-
-  Future<Either<Failure, VideoEntity>> call({
-    required String videoId,
-    required bool isLiked,
-  }) {
-    return _repository.toggleLike(videoId: videoId, isLiked: isLiked);
-  }
+class InsertVideoUseCase {
+  final VideoRepository _repo;
+  InsertVideoUseCase(this._repo);
+  Future<VideoEntity> call(VideoEntity video) => _repo.insertVideo(video);
 }
 
-// lib/domain/usecases/get_cached_video_usecase.dart
-class GetCachedVideoUseCase {
-  final VideoRepository _repository;
+class UpdateVideoUseCase {
+  final VideoRepository _repo;
+  UpdateVideoUseCase(this._repo);
+  Future<VideoEntity> call(VideoEntity video) => _repo.updateVideo(video);
+}
 
-  GetCachedVideoUseCase(this._repository);
+class DeleteVideoUseCase {
+  final VideoRepository _repo;
+  DeleteVideoUseCase(this._repo);
+  Future<void> call(String id) => _repo.deleteVideo(id);
+}
 
-  Future<Either<Failure, String>> call(String videoUrl) {
-    return _repository.getCachedVideoPath(videoUrl);
-  }
+class IsDatabaseEmptyUseCase {
+  final VideoRepository _repo;
+  IsDatabaseEmptyUseCase(this._repo);
+  Future<bool> call() => _repo.isDatabaseEmpty();
 }

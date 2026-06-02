@@ -1,9 +1,11 @@
 // lib/presentation/views/feed_screen.dart
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/feed_viewmodel.dart';
+import '../widgets/add_video_sheet.dart';
 import '../widgets/reel_item.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -13,101 +15,167 @@ class FeedScreen extends StatefulWidget {
   State<FeedScreen> createState() => _FeedScreenState();
 }
 
-class _FeedScreenState extends State<FeedScreen> {
-  late final PageController _pageController;
+class _FeedScreenState extends State<FeedScreen>
+    with SingleTickerProviderStateMixin {
+  late final PageController _pageCtrl;
+  late AnimationController _fabCtrl;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
-    // Full immersive mode for reels
+    _pageCtrl = PageController();
+    _fabCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _pageCtrl.dispose();
+    _fabCtrl.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
+  }
+
+  void _openAddSheet(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: const AddVideoSheet(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<FeedViewModel>(
-      builder: (context, vm, _) {
+      builder: (ctx, vm, _) {
         return Scaffold(
           backgroundColor: Colors.black,
-          body: _buildBody(vm),
+          body: _buildBody(ctx, vm),
+          floatingActionButton: _buildFAB(ctx, vm),
         );
       },
     );
   }
 
-  Widget _buildBody(FeedViewModel vm) {
+  Widget _buildBody(BuildContext ctx, FeedViewModel vm) {
     switch (vm.state) {
       case FeedState.initial:
       case FeedState.loading:
-        return const _LoadingPlaceholder();
+        return const _FullScreenLoader();
 
       case FeedState.error:
-        return _ErrorView(
-          message: vm.errorMessage ?? 'Something went wrong',
-          onRetry: vm.retry,
-        );
+        return _ErrorScreen(message: vm.errorMessage ?? 'Something went wrong', onRetry: vm.reload);
 
       case FeedState.loaded:
-      case FeedState.loadingMore:
-        return _buildFeed(vm);
+        if (vm.videos.isEmpty) return _EmptyScreen(onAdd: () => _openAddSheet(ctx));
+        return _buildFeed(ctx, vm);
     }
   }
 
-  Widget _buildFeed(FeedViewModel vm) {
+  Widget _buildFeed(BuildContext ctx, FeedViewModel vm) {
+    final accent = vm.videos.isNotEmpty
+        ? Color(vm.videos[vm.currentIndex.clamp(0, vm.videos.length - 1)].accentColor)
+        : const Color(0xFF6C63FF);
+
     return Stack(
       children: [
+        // Main PageView
         PageView.builder(
-          controller: _pageController,
+          controller: _pageCtrl,
           scrollDirection: Axis.vertical,
           physics: const BouncingScrollPhysics(),
-          itemCount: vm.videos.length + (vm.isLoadingMore ? 1 : 0),
+          itemCount: vm.videos.length,
           onPageChanged: vm.onPageChanged,
-          itemBuilder: (context, index) {
-            if (index == vm.videos.length) {
-              return const _LoadMoreIndicator();
-            }
-            return ReelItem(
-              key: ValueKey(vm.videos[index].id),
-              video: vm.videos[index],
-              isActive: index == vm.currentIndex,
-            );
-          },
+          itemBuilder: (_, i) => ReelItem(
+            key: ValueKey(vm.videos[i].id),
+            video: vm.videos[i],
+            isActive: i == vm.currentIndex,
+          ),
         ),
 
-        // Top bar overlay
+        // Top bar
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Tab switcher (Following / For You)
-                _TopTabBar(),
+                // Logo / App name
+                _AppLogo(accent: accent),
 
-                // Search/camera icons
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.search, color: Colors.white),
-                      onPressed: () {},
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.camera_alt_outlined,
-                          color: Colors.white),
-                      onPressed: () {},
-                    ),
-                  ],
-                ),
+                // Video count badge
+                _VideoBadge(count: vm.videos.length, accent: accent),
               ],
             ),
+          ),
+        ),
+
+        // Progress dots (right side vertical)
+        if (vm.videos.length <= 20)
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: _ProgressDots(
+              total: vm.videos.length,
+              current: vm.currentIndex,
+              accent: accent,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFAB(BuildContext ctx, FeedViewModel vm) {
+    if (vm.state != FeedState.loaded) return const SizedBox.shrink();
+
+    final accent = vm.videos.isNotEmpty && vm.currentIndex < vm.videos.length
+        ? Color(vm.videos[vm.currentIndex].accentColor)
+        : const Color(0xFF6C63FF);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 80),
+      child: FloatingActionButton(
+        onPressed: () => _openAddSheet(ctx),
+        backgroundColor: accent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AppLogo extends StatelessWidget {
+  final Color accent;
+  const _AppLogo({required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: accent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          'ReelBox',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            letterSpacing: 0.5,
           ),
         ),
       ],
@@ -115,64 +183,28 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Supporting widgets
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _TopTabBar extends StatefulWidget {
-  @override
-  State<_TopTabBar> createState() => _TopTabBarState();
-}
-
-class _TopTabBarState extends State<_TopTabBar> {
-  int _selected = 1;
+class _VideoBadge extends StatelessWidget {
+  final int count;
+  final Color accent;
+  const _VideoBadge({required this.count, required this.accent});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _Tab(label: 'Following', selected: _selected == 0,
-            onTap: () => setState(() => _selected = 0)),
-        const SizedBox(width: 16),
-        _Tab(label: 'For You', selected: _selected == 1,
-            onTap: () => setState(() => _selected = 1)),
-      ],
-    );
-  }
-}
-
-class _Tab extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _Tab({required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.black45,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent.withOpacity(0.5)),
+      ),
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Icon(Icons.video_library_outlined, color: accent, size: 14),
+          const SizedBox(width: 6),
           Text(
-            label,
-            style: TextStyle(
-              color: selected ? Colors.white : Colors.white60,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              fontSize: 15,
-              shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
-            ),
-          ),
-          const SizedBox(height: 3),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 2,
-            width: selected ? 40 : 0,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(1),
-            ),
+            '$count reels',
+            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -180,25 +212,61 @@ class _Tab extends StatelessWidget {
   }
 }
 
-class _LoadingPlaceholder extends StatelessWidget {
-  const _LoadingPlaceholder();
+class _ProgressDots extends StatelessWidget {
+  final int total;
+  final int current;
+  final Color accent;
+  const _ProgressDots({required this.total, required this.current, required this.accent});
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(
-        valueColor: AlwaysStoppedAnimation(Colors.white),
-        strokeWidth: 2,
+    const maxVisible = 7;
+    if (total <= 1) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(min(total, maxVisible), (i) {
+          final isActive = i == current.clamp(0, maxVisible - 1);
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.symmetric(vertical: 2),
+            width: isActive ? 5 : 3,
+            height: isActive ? 16 : 6,
+            decoration: BoxDecoration(
+              color: isActive ? accent : Colors.white30,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          );
+        }),
       ),
     );
   }
 }
 
-class _ErrorView extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
+class _FullScreenLoader extends StatefulWidget {
+  const _FullScreenLoader();
 
-  const _ErrorView({required this.message, required this.onRetry});
+  @override
+  State<_FullScreenLoader> createState() => _FullScreenLoaderState();
+}
+
+class _FullScreenLoaderState extends State<_FullScreenLoader>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -206,25 +274,30 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.wifi_off_rounded, color: Colors.white70, size: 56),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: const TextStyle(color: Colors.white70, fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: onRetry,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
+          AnimatedBuilder(
+            animation: _ctrl,
+            builder: (_, child) => Transform.rotate(
+              angle: _ctrl.value * 2 * pi,
+              child: child,
+            ),
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: const SweepGradient(
+                  colors: [Color(0xFF6C63FF), Color(0xFFFF6584), Color(0xFF6C63FF)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
               ),
             ),
-            child: const Text('Try Again',),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Loading ReelBox...',
+            style: TextStyle(color: Colors.white54, fontSize: 14, letterSpacing: 0.5),
           ),
         ],
       ),
@@ -232,21 +305,72 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
-class _LoadMoreIndicator extends StatelessWidget {
-  const _LoadMoreIndicator();
+class _ErrorScreen extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorScreen({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.redAccent, size: 64),
+            const SizedBox(height: 16),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 15)),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyScreen extends StatelessWidget {
+  final VoidCallback onAdd;
+  const _EmptyScreen({required this.onAdd});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(Colors.white),
-            strokeWidth: 2,
+          const Text('🎬', style: TextStyle(fontSize: 72)),
+          const SizedBox(height: 16),
+          const Text('No reels yet!',
+              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          const Text('Add your first reel to get started.',
+              style: TextStyle(color: Colors.white54, fontSize: 15)),
+          const SizedBox(height: 28),
+          ElevatedButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Reel'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6C63FF),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
           ),
-          SizedBox(height: 12),
-          Text('Loading more...', style: TextStyle(color: Colors.white70)),
         ],
       ),
     );

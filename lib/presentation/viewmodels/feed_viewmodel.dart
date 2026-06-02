@@ -1,29 +1,34 @@
 // lib/presentation/viewmodels/feed_viewmodel.dart
 
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/constants/app_constants.dart';
-import '../../data/datasources/video_cache_service.dart';
+import '../../data/datasources/demo_seeder.dart';
 import '../../domain/entities/video_entity.dart';
 import '../../domain/usecases/video_usecases.dart';
 
-enum FeedState { initial, loading, loaded, loadingMore, error }
+enum FeedState { initial, loading, loaded, error }
 
 class FeedViewModel extends ChangeNotifier {
-  final FetchVideosUseCase _fetchVideosUseCase;
-  final ToggleLikeUseCase _toggleLikeUseCase;
-  final GetCachedVideoUseCase _getCachedVideoUseCase;
+  final GetAllVideosUseCase getAllVideos;
+  final InsertVideoUseCase insertVideo;
+  final UpdateVideoUseCase updateVideo;
+  final DeleteVideoUseCase deleteVideo;
+  final DemoSeeder seeder;
 
   FeedViewModel({
-    required FetchVideosUseCase fetchVideosUseCase,
-    required ToggleLikeUseCase toggleLikeUseCase,
-    required GetCachedVideoUseCase getCachedVideoUseCase,
-  })  : _fetchVideosUseCase = fetchVideosUseCase,
-        _toggleLikeUseCase = toggleLikeUseCase,
-        _getCachedVideoUseCase = getCachedVideoUseCase {
-    fetchInitialVideos();
+    required this.getAllVideos,
+    required this.insertVideo,
+    required this.updateVideo,
+    required this.deleteVideo,
+    required this.seeder,
+  }) {
+    _init();
   }
 
-  // ─── State ────────────────────────────────────────────────
+  // ── State ──────────────────────────────────────────────
   FeedState _state = FeedState.initial;
   FeedState get state => _state;
 
@@ -36,148 +41,200 @@ class FeedViewModel extends ChangeNotifier {
   int _currentIndex = 0;
   int get currentIndex => _currentIndex;
 
-  bool _hasMore = true;
-  bool get hasMore => _hasMore;
+  bool _isAddingVideo = false;
+  bool get isAddingVideo => _isAddingVideo;
 
-  bool get isLoading => _state == FeedState.loading;
-  bool get isLoadingMore => _state == FeedState.loadingMore;
+  String? _addVideoError;
+  String? get addVideoError => _addVideoError;
 
-  // ─── Cached video paths ───────────────────────────────────
-  final Map<String, String> _cachedPaths = {};
-  Map<String, String> get cachedPaths => Map.unmodifiable(_cachedPaths);
+  final _uuid = const Uuid();
 
-  // ─── Public API ───────────────────────────────────────────
-
-  /// Initial load
-  Future<void> fetchInitialVideos() async {
+  // ── Init ───────────────────────────────────────────────
+  Future<void> _init() async {
     _setState(FeedState.loading);
-    _errorMessage = null;
-
-    final result = await _fetchVideosUseCase();
-
-    result.fold(
-      (failure) {
-        _errorMessage = failure.message;
-        _setState(FeedState.error);
-      },
-      (videos) {
-        _videos = videos;
-        _hasMore = videos.length == AppConstants.pageSize;
-        _setState(FeedState.loaded);
-        _schedulePreload(0);
-      },
-    );
-  }
-
-  /// Load next page (pagination)
-  Future<void> fetchMoreVideos() async {
-    if (!_hasMore || _state == FeedState.loadingMore) return;
-    _setState(FeedState.loadingMore);
-
-    final lastId = _videos.isNotEmpty ? _videos.last.id : null;
-    final result = await _fetchVideosUseCase(lastDocumentId: lastId);
-
-    result.fold(
-      (failure) {
-        _errorMessage = failure.message;
-        _setState(FeedState.loaded); // Revert to loaded so user can retry
-      },
-      (newVideos) {
-        _videos = [..._videos, ...newVideos];
-        _hasMore = newVideos.length == AppConstants.pageSize;
-        _setState(FeedState.loaded);
-        _schedulePreload(_currentIndex);
-      },
-    );
-  }
-
-  /// Called when user swipes to a new index
-  void onPageChanged(int index) {
-    _currentIndex = index;
-    notifyListeners();
-    _schedulePreload(index);
-
-    // Trigger pagination when approaching end
-    if (index >= _videos.length - 3) {
-      fetchMoreVideos();
+    try {
+      // Seed demo data on first launch
+      await seeder.seedIfEmpty();
+      final list = await getAllVideos();
+      _videos = list;
+      _setState(FeedState.loaded);
+    } catch (e) {
+      _errorMessage = e.toString();
+      _setState(FeedState.error);
     }
   }
 
-  /// Toggle like with optimistic update
+  Future<void> reload() => _init();
+
+  // ── Navigation ─────────────────────────────────────────
+  void onPageChanged(int index) {
+    _currentIndex = index;
+    notifyListeners();
+  }
+
+  // ── Like (optimistic) ──────────────────────────────────
   Future<void> toggleLike(String videoId) async {
     final idx = _videos.indexWhere((v) => v.id == videoId);
     if (idx == -1) return;
 
-    final video = _videos[idx];
-    final newIsLiked = !video.isLiked;
-    final newLikes = newIsLiked ? video.likesCount + 1 : video.likesCount - 1;
-
-    // Optimistic update
-    _videos[idx] = video.copyWith(
-      isLiked: newIsLiked,
-      likesCount: newLikes.clamp(0, double.maxFinite.toInt()),
+    final v = _videos[idx];
+    final updated = v.copyWith(
+      isLiked: !v.isLiked,
+      likesCount: v.isLiked ? v.likesCount - 1 : v.likesCount + 1,
     );
+
+    _videos[idx] = updated;
     notifyListeners();
 
-    // Sync with backend
-    final result = await _toggleLikeUseCase(
-      videoId: videoId,
-      isLiked: newIsLiked,
-    );
-
-    result.fold(
-      (_) {
-        // Revert on failure
-        _videos[idx] = video;
-        notifyListeners();
-      },
-      (updated) {
-        _videos[idx] = updated;
-        notifyListeners();
-      },
-    );
-  }
-
-  /// Retry after error
-  Future<void> retry() => fetchInitialVideos();
-
-  // ─── Private Helpers ─────────────────────────────────────
-
-  void _setState(FeedState newState) {
-    _state = newState;
-    notifyListeners();
-  }
-
-  /// Preloads N videos ahead and behind current index
-  void _schedulePreload(int currentIndex) {
-    final start = (currentIndex - AppConstants.preloadBehind).clamp(0, _videos.length - 1);
-    final end = (currentIndex + AppConstants.preloadAhead).clamp(0, _videos.length - 1);
-
-    for (int i = start; i <= end; i++) {
-      final video = _videos[i];
-      if (!_cachedPaths.containsKey(video.videoUrl)) {
-        _preloadVideo(video.videoUrl);
-      }
+    try {
+      await updateVideo(updated);
+    } catch (_) {
+      // Revert
+      _videos[idx] = v;
+      notifyListeners();
     }
   }
 
-  Future<void> _preloadVideo(String url) async {
-    // Fire-and-forget background preload
-    VideoCacheManager.preCache(url).then((_) async {
-      final result = await _getCachedVideoUseCase(url);
-      result.fold(
-        (_) {},
-        (path) {
-          _cachedPaths[url] = path;
-          notifyListeners();
-        },
+  // ── Add Video ──────────────────────────────────────────
+
+  /// Add from a network URL (for demo/manual URL entry)
+  Future<bool> addVideoFromUrl({
+    required String url,
+    required String title,
+    required String username,
+    required String caption,
+    required String category,
+    required int accentColor,
+  }) async {
+    _isAddingVideo = true;
+    _addVideoError = null;
+    notifyListeners();
+
+    try {
+      final entity = VideoEntity(
+        id: _uuid.v4(),
+        title: title.isEmpty ? 'My Reel' : title,
+        videoUrl: url,
+        isLocalFile: false,
+        username: username.isEmpty ? 'me' : username,
+        caption: caption.isEmpty ? '🎬 New reel!' : caption,
+        audioName: 'Original Sound',
+        category: category,
+        accentColor: accentColor,
+        likesCount: 0,
+        commentsCount: 0,
+        sharesCount: 0,
+        isLiked: false,
+        createdAt: DateTime.now(),
       );
-    });
+      final saved = await insertVideo(entity);
+      _videos.insert(0, saved);
+      _isAddingVideo = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _addVideoError = 'Failed to add video: $e';
+      _isAddingVideo = false;
+      notifyListeners();
+      return false;
+    }
   }
 
-  @override
-  void dispose() {
-    _cachedPaths.clear();
-    super.dispose();
+  /// Add from local file picker
+  Future<bool> addVideoFromFilePicker({
+    required String title,
+    required String username,
+    required String caption,
+    required String category,
+    required int accentColor,
+  }) async {
+    _isAddingVideo = true;
+    _addVideoError = null;
+    notifyListeners();
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.video,
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        _isAddingVideo = false;
+        notifyListeners();
+        return false;
+      }
+
+      final path = result.files.single.path;
+      if (path == null) {
+        _addVideoError = 'Could not get file path';
+        _isAddingVideo = false;
+        notifyListeners();
+        return false;
+      }
+
+      final file = File(path);
+      if (!await file.exists()) {
+        _addVideoError = 'File does not exist';
+        _isAddingVideo = false;
+        notifyListeners();
+        return false;
+      }
+
+      final entity = VideoEntity(
+        id: _uuid.v4(),
+        title: title.isEmpty ? result.files.single.name : title,
+        videoUrl: path,
+        isLocalFile: true,
+        username: username.isEmpty ? 'me' : username,
+        caption: caption.isEmpty ? '🎬 My reel!' : caption,
+        audioName: 'Original Sound',
+        category: category,
+        accentColor: accentColor,
+        likesCount: 0,
+        commentsCount: 0,
+        sharesCount: 0,
+        isLiked: false,
+        createdAt: DateTime.now(),
+      );
+
+      final saved = await insertVideo(entity);
+      _videos.insert(0, saved);
+      _isAddingVideo = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _addVideoError = 'Failed to add video: $e';
+      _isAddingVideo = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ── Delete ─────────────────────────────────────────────
+  Future<void> deleteVideoById(String id) async {
+    final idx = _videos.indexWhere((v) => v.id == id);
+    if (idx == -1) return;
+
+    final removed = _videos[idx];
+    _videos.removeAt(idx);
+
+    // Fix current index after deletion
+    if (_currentIndex >= _videos.length && _currentIndex > 0) {
+      _currentIndex = _videos.length - 1;
+    }
+    notifyListeners();
+
+    try {
+      await deleteVideo(id);
+    } catch (_) {
+      // Revert
+      _videos.insert(idx, removed);
+      notifyListeners();
+    }
+  }
+
+  void _setState(FeedState s) {
+    _state = s;
+    notifyListeners();
   }
 }

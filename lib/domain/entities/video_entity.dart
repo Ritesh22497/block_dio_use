@@ -4,12 +4,14 @@ import 'package:equatable/equatable.dart';
 
 class VideoEntity extends Equatable {
   final String id;
-  final String videoUrl;
-  final String thumbnailUrl;
+  final String title;
+  final String videoUrl;       // network URL or local file path
+  final bool isLocalFile;      // true = local path, false = network URL
   final String username;
-  final String userAvatar;
   final String caption;
   final String audioName;
+  final String category;
+  final int accentColor;       // stored as int (ARGB)
   final int likesCount;
   final int commentsCount;
   final int sharesCount;
@@ -18,12 +20,14 @@ class VideoEntity extends Equatable {
 
   const VideoEntity({
     required this.id,
+    required this.title,
     required this.videoUrl,
-    required this.thumbnailUrl,
+    required this.isLocalFile,
     required this.username,
-    required this.userAvatar,
     required this.caption,
     required this.audioName,
+    required this.category,
+    required this.accentColor,
     required this.likesCount,
     required this.commentsCount,
     required this.sharesCount,
@@ -33,12 +37,14 @@ class VideoEntity extends Equatable {
 
   VideoEntity copyWith({
     String? id,
+    String? title,
     String? videoUrl,
-    String? thumbnailUrl,
+    bool? isLocalFile,
     String? username,
-    String? userAvatar,
     String? caption,
     String? audioName,
+    String? category,
+    int? accentColor,
     int? likesCount,
     int? commentsCount,
     int? sharesCount,
@@ -47,12 +53,14 @@ class VideoEntity extends Equatable {
   }) {
     return VideoEntity(
       id: id ?? this.id,
+      title: title ?? this.title,
       videoUrl: videoUrl ?? this.videoUrl,
-      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      isLocalFile: isLocalFile ?? this.isLocalFile,
       username: username ?? this.username,
-      userAvatar: userAvatar ?? this.userAvatar,
       caption: caption ?? this.caption,
       audioName: audioName ?? this.audioName,
+      category: category ?? this.category,
+      accentColor: accentColor ?? this.accentColor,
       likesCount: likesCount ?? this.likesCount,
       commentsCount: commentsCount ?? this.commentsCount,
       sharesCount: sharesCount ?? this.sharesCount,
@@ -62,18 +70,5 @@ class VideoEntity extends Equatable {
   }
 
   @override
-  List<Object?> get props => [
-        id,
-        videoUrl,
-        thumbnailUrl,
-        username,
-        userAvatar,
-        caption,
-        audioName,
-        likesCount,
-        commentsCount,
-        sharesCount,
-        isLiked,
-        createdAt,
-      ];
+  List<Object?> get props => [id, videoUrl, isLiked, likesCount];
 }
