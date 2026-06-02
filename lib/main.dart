@@ -1,88 +1,37 @@
-// import 'package:block_dio_use/screen/google_login_screen.dart';
-// import 'package:firebase_core/firebase_core.dart';
-// import 'package:flutter/material.dart';
+// lib/main.dart
 
-// Future<void> main() async {
-//    WidgetsFlutterBinding.ensureInitialized();
-//   await Firebase.initializeApp();
-//   runApp(const MyApp());
-// }
-
-// class MyApp extends StatelessWidget {
-//   const MyApp({super.key});
-
-//   // This widget is the root of your application.
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       title: 'Flutter Demo',
-//       debugShowCheckedModeBanner: false,
-//       theme: ThemeData(
-       
-//         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-//       ),
-//       home:UserLoginScreen(),
-
-
-
-
-
-
-
-
-
-      
-//     );
-//   }
-// }
-
-import 'package:block_dio_use/Ai_chatboat/chat_screen.dart';
-import 'package:block_dio_use/Ai_chatboat/local_db_service.dart';
-import 'package:block_dio_use/LIBROLANE/screen/homeScreen.dart';
-import 'package:block_dio_use/student_ai_chatbot/providers/chat_provider.dart';
-import 'package:block_dio_use/student_ai_chatbot/screens/chat_screen.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-//import 'screens/chat_screen.dart';
-// import 'providers/chat_provider.dart';
-// import 'services/firebase_service.dart';
+import 'core/di/injection_container.dart';
+import 'presentation/viewmodels/feed_viewmodel.dart';
+import 'presentation/views/feed_screen.dart';
 
 void main() async {
-     WidgetsFlutterBinding.ensureInitialized();
-//      await Firebase.initializeApp(
-//   options: DefaultFirebaseOptions.currentPlatform,
-// );
-    await Firebase.initializeApp();
-  // WidgetsFlutterBinding.ensureInitialized();
-  // await Firebase.initializeApp();
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  await initDependencies();
+  runApp(const ReelsApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+class ReelsApp extends StatelessWidget {
+  const ReelsApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider1()),
-      ],
-      child: MaterialApp(
-        title: 'Student AI Helper',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          scaffoldBackgroundColor: Colors.grey[50],
-          appBarTheme: const AppBarTheme(
-            elevation: 0,
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
-          ),
+    return MaterialApp(
+      title: 'Reels',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: Colors.black,
+        colorScheme: const ColorScheme.dark(
+          primary: Colors.white,
+          secondary: Colors.redAccent,
         ),
-       home: const ChatScreen2(),
-       // home: const HomeScreen(),
+      ),
+      home: ChangeNotifierProvider<FeedViewModel>(
+        create: (_) => sl<FeedViewModel>(),
+        child: const FeedScreen(),
       ),
     );
   }
