@@ -1,5 +1,6 @@
 // lib/presentation/views/feed_screen.dart
 
+import 'package:block_dio_use/presentation/views/video_uploade/videoUpload.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -38,6 +39,19 @@ class _FeedScreenState extends State<FeedScreen> {
         return Scaffold(
           backgroundColor: Colors.black,
           body: _buildBody(vm),
+           floatingActionButton: FloatingActionButton(
+    backgroundColor: Colors.red,
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const UploadVideoScreen(),
+        ),
+      );
+    },
+    child: const Icon(Icons.add),
+  ),
+
         );
       },
     );
@@ -202,6 +216,7 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint("error================:$message");
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,

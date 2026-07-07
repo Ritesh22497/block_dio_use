@@ -1,5 +1,8 @@
 // lib/core/di/injection_container.dart
 
+import 'package:block_dio_use/data/models/uploadModel.dart';
+import 'package:block_dio_use/data/service/VideoFirestoreService.dart';
+import 'package:block_dio_use/data/service/uploadeService.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get_it/get_it.dart';
 import '../../data/datasources/video_remote_datasource.dart';
@@ -39,4 +42,24 @@ Future<void> initDependencies() async {
       getCachedVideoUseCase: sl(),
     ),
   );
+  // Upload Service
+sl.registerLazySingleton(
+      () => UploadVideoService(sl()),
+);
+
+// Upload ViewModel
+sl.registerLazySingleton(
+  () => CloudinaryService(),
+);
+
+sl.registerLazySingleton(
+  () => VideoFirestoreService(),
+);
+
+sl.registerFactory(
+  () => UploadVideoViewModel(
+    cloudinary: sl<CloudinaryService>(),
+    firestore: sl<VideoFirestoreService>(),
+  ),
+);
 }

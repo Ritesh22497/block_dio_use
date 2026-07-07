@@ -147,19 +147,35 @@ class FeedViewModel extends ChangeNotifier {
     _state = newState;
     notifyListeners();
   }
+void _schedulePreload(int currentIndex) {
+  if (_videos.isEmpty) return;
 
-  /// Preloads N videos ahead and behind current index
-  void _schedulePreload(int currentIndex) {
-    final start = (currentIndex - AppConstants.preloadBehind).clamp(0, _videos.length - 1);
-    final end = (currentIndex + AppConstants.preloadAhead).clamp(0, _videos.length - 1);
+  final start = (currentIndex - AppConstants.preloadBehind)
+      .clamp(0, _videos.length - 1);
 
-    for (int i = start; i <= end; i++) {
-      final video = _videos[i];
-      if (!_cachedPaths.containsKey(video.videoUrl)) {
-        _preloadVideo(video.videoUrl);
-      }
+  final end = (currentIndex + AppConstants.preloadAhead)
+      .clamp(0, _videos.length - 1);
+
+  for (int i = start; i <= end; i++) {
+    final video = _videos[i];
+
+    if (!_cachedPaths.containsKey(video.videoUrl)) {
+      _preloadVideo(video.videoUrl);
     }
   }
+}
+  // /// Preloads N videos ahead and behind current index
+  // void _schedulePreload(int currentIndex) {
+  //   final start = (currentIndex - AppConstants.preloadBehind).clamp(0, _videos.length - 1);
+  //   final end = (currentIndex + AppConstants.preloadAhead).clamp(0, _videos.length - 1);
+
+  //   for (int i = start; i <= end; i++) {
+  //     final video = _videos[i];
+  //     if (!_cachedPaths.containsKey(video.videoUrl)) {
+  //       _preloadVideo(video.videoUrl);
+  //     }
+  //   }
+  // }
 
   Future<void> _preloadVideo(String url) async {
     // Fire-and-forget background preload
